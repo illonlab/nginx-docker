@@ -69,14 +69,15 @@ load_env() {
 # Function to create temporary certificates
 create_temp_certs() {
     local rsa_key_size=4096
-    local data_path="$CERTBOT_SSL_DIR"
+    local certbot_ssl_path="$CERTBOT_SSL_DIR"
+    local host_ssl_path="$CERTBOT_SSL_DIR"
     local email="${SSL_EMAIL:-hello@example.com}"
 
     # Parse domains from environment variable
     local domains=(${CERTBOT_DOMAINS:-example.com})
 
     # Check if directory is not empty
-    if [ "$(find "$data_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+    if [ "$(find "$host_ssl_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
         read -p "SSL directory not empty. Overwrite? (y/N) " decision
         if [[ "$decision" != "y" && "$decision" != "Y" ]]; then
             exit
@@ -85,18 +86,18 @@ create_temp_certs() {
 
     for domain in "${domains[@]}"; do
         echo "### Creating dummy certificate for $domain ..."
-        mkdir -p "$data_path/live/$domain"
+        mkdir -p "$host_ssl_path/live/$domain"
 
         # Generate temporary certificate
         docker compose -f "compose.yaml" run --rm --entrypoint "\
           openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1 \
-            -keyout '$data_path/live/$domain/privkey.pem' \
-            -out '$data_path/live/$domain/fullchain.pem' \
+            -keyout '$certbot_ssl_path/live/$domain/privkey.pem' \
+            -out '$certbot_ssl_path/live/$domain/fullchain.pem' \
             -subj '/CN=localhost'" certbot
 
         # Create compatible certificate files
-        cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/chain.pem"
-        cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/cert.pem"
+        cp "$host_ssl_path/live/$domain/fullchain.pem" "$host_ssl_path/live/$domain/chain.pem"
+        cp "$host_ssl_path/live/$domain/fullchain.pem" "$host_ssl_path/live/$domain/cert.pem"
     done
 }
 

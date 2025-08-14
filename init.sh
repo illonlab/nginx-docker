@@ -76,14 +76,6 @@ create_temp_certs() {
     # Parse domains from environment variable
     local domains=(${CERTBOT_DOMAINS:-example.com})
 
-    # Check if directory is not empty
-    if [ "$(find "$host_ssl_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-        read -p "SSL directory not empty. Overwrite? (y/N) " decision
-        if [[ "$decision" != "y" && "$decision" != "Y" ]]; then
-            exit
-        fi
-    fi
-
     for domain in "${domains[@]}"; do
         echo "### Creating dummy certificate for $domain ..."
         mkdir -p "$host_ssl_path/$domain"

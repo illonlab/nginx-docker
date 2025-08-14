@@ -15,9 +15,9 @@ services:
       - ./conf.d:/etc/conf.d
       - ./stream-conf.d:/etc/stream-conf.d
       - ./locations:/etc/locations
-      - ./certbot/ssl/:/etc/letsencrypt
-      - ./99-autoreload.sh:/docker-entrypoint.d/99-autoreload.sh
-      - ./20-envsubst-on-templates.sh:/docker-entrypoint.d/20-envsubst-on-templates.sh
+      - ./ssl:/etc/letsencrypt
+      - ./99-autoreload.sh:/docker-entrypoint.d/99-autoreload.sh:ro
+      - ./20-envsubst-on-templates.sh:/docker-entrypoint.d/20-envsubst-on-templates.sh:ro
       - ./www/html:/var/www/html
       - ./www/certbot:/var/www/certbot
 

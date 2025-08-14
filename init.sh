@@ -61,7 +61,19 @@ load_env() {
 }
 
 # === Generates a temporary self-signed certificate for a domain so services can start before the real cert is issued ===
-create_temp_certs() {
+    create_temp_certs() {
+    IFS=' ' read -r -a domains <<< "${CERTBOT_DOMAINS:-example.com}"
+    rsa_key_size=4096
+    data_path="./certbot/ssl/"
+    email="${SSL_EMAIL:-hello@example.com}"
+    staging=0
+    
+    if [ "$(find "$data_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+        read -p "SSL directory not empty. Overwrite? (y/N) " decision
+        if [ "$decision" != "y" ] && [ "$decision" != "Y" ]; then
+            exit
+        fi
+    fi
     local domain=$1
     echo "### Creating dummy certificate for $domain ..."
     local path="/etc/letsencrypt/live/$domain"
@@ -125,22 +137,12 @@ dirs=(
 )
 create_directories "${dirs[@]}"
 
-IFS=' ' read -r -a domains <<< "${CERTBOT_DOMAINS:-example.com}"
-rsa_key_size=4096
-data_path="./certbot/ssl/"
-email="${SSL_EMAIL:-hello@example.com}"
-staging=0
-
-if [ "$(find "$data_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-    read -p "SSL directory not empty. Overwrite? (y/N) " decision
-    if [ "$decision" != "y" ] && [ "$decision" != "Y" ]; then
-        exit
-    fi
-fi
-
 for domain in "${domains[@]}"; do
     create_temp_certs "$domain"
 done
+
+# Pause here for debugging
+read -p "Press Enter to continue..."
 
 echo "### Starting nginx ..."
 docker compose -f "compose.yaml" up --force-recreate -d nginx

@@ -1,4 +1,10 @@
 #!/bin/bash
+set -e
+
+# Use Let's Encrypt staging environment if set to 1
+STAGING=0
+
+SSL_DIR="${SSL_DIR:-./ssl}"
 
 # --- Functions ---
 
@@ -60,38 +66,51 @@ load_env() {
     done < "$env_file"
 }
 
-# === Generates a temporary self-signed certificate for a domain so services can start before the real cert is issued ===
-    create_temp_certs() {
-    IFS=' ' read -r -a domains <<< "${CERTBOT_DOMAINS:-example.com}"
-    rsa_key_size=4096
-    data_path="./certbot/ssl/"
-    email="${SSL_EMAIL:-hello@example.com}"
-    staging=0
-    
+# Function to create temporary certificates
+create_temp_certs() {
+    local rsa_key_size=4096
+    local data_path="$SSL_DIR"        # <-- path taken from SSL_DIR
+    local email="${SSL_EMAIL:-hello@example.com}"
+
+    # Parse domains from environment variable
+    local domains=(${CERTBOT_DOMAINS:-example.com})
+
+    # Check if directory is not empty
     if [ "$(find "$data_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
         read -p "SSL directory not empty. Overwrite? (y/N) " decision
-        if [ "$decision" != "y" ] && [ "$decision" != "Y" ]; then
+        if [[ "$decision" != "y" && "$decision" != "Y" ]]; then
             exit
         fi
     fi
-    local domain=$1
-    echo "### Creating dummy certificate for $domain ..."
-    local path="/etc/letsencrypt/live/$domain"
-    mkdir -p "$data_path/live/$domain"
-    
-    docker compose -f "compose.yaml" run --rm --entrypoint "\
-      openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1 \
-        -keyout '$path/privkey.pem' \
-        -out '$path/fullchain.pem' \
-        -subj '/CN=localhost'" certbot
-    
-    cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/chain.pem"
-    cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/cert.pem"
+
+    for domain in "${domains[@]}"; do
+        echo "### Creating dummy certificate for $domain ..."
+        mkdir -p "$data_path/live/$domain"
+
+        # Generate temporary certificate
+        docker compose -f "compose.yaml" run --rm --entrypoint "\
+          openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1 \
+            -keyout '$data_path/live/$domain/privkey.pem' \
+            -out '$data_path/live/$domain/fullchain.pem' \
+            -subj '/CN=localhost'" certbot
+
+        # Create compatible certificate files
+        cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/chain.pem"
+        cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/cert.pem"
+    done
 }
+
 
 # --- Preparation ---
 
 load_env
+
+# Check SSL_DIR
+# If SSL_DIR is unset, empty, or contains spaces, exit with error
+if [[ -z "$SSL_DIR" || "$SSL_DIR" =~ [[:space:]] ]]; then
+    echo "Error: SSL_DIR is not set, empty, or contains spaces. Please set SSL_DIR in .env correctly." >&2
+    exit 1
+fi
 
 if ! docker compose version &>/dev/null; then
     echo 'Error: docker compose is not installed.' >&2
@@ -133,20 +152,17 @@ dirs=(
     "${STACKS_DIR}/${STACK_NAME}/templates"
     "${STACKS_DIR}/${STACK_NAME}/www/certbot"
     "${STACKS_DIR}/${STACK_NAME}/www/html"
-    "${STACKS_DIR}/${STACK_NAME}/ssl"
+    "${STACKS_DIR}/${STACK_NAME}/${SSL_DIR}"
 )
 create_directories "${dirs[@]}"
 
-for domain in "${domains[@]}"; do
-    create_temp_certs "$domain"
-done
+create_temp_certs
 
 # Pause here for debugging
 read -p "Press Enter to continue..."
 
 echo "### Starting nginx ..."
 docker compose -f "compose.yaml" up --force-recreate -d nginx
-
 
 echo "### Deleting dummy certificate for $domains ..."
 docker compose  -f "compose.yaml" run --rm --entrypoint "\
@@ -155,7 +171,7 @@ docker compose  -f "compose.yaml" run --rm --entrypoint "\
   rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
 echo
 
-echo "staging = $staging"
+echo "STAGING = $STAGING"
 
 echo "### Requesting Let's Encrypt certificates for ${domains[*]} ..."
 domain_args=""
@@ -168,7 +184,7 @@ case "$email" in
 *) email_arg="--email $email" ;;
 esac
 
-if [ $staging != "0" ]; then staging_arg="--staging"; fi
+if [ $STAGING != "0" ]; then staging_arg="--staging"; fi
 
 docker compose -f "compose.yaml" run --rm --entrypoint "\
   certbot -v certonly --webroot -w /var/www/certbot \

@@ -4,7 +4,7 @@ set -e
 # Use Let's Encrypt staging environment if set to 1
 STAGING=0
 
-SSL_DIR="${SSL_DIR:-./ssl}"
+CERTBOT_SSL_DIR="${CERTBOT_SSL_DIR:-/etc/nginx/letsencrypt}"
 
 # --- Functions ---
 
@@ -69,7 +69,7 @@ load_env() {
 # Function to create temporary certificates
 create_temp_certs() {
     local rsa_key_size=4096
-    local data_path="$SSL_DIR"        # <-- path taken from SSL_DIR
+    local data_path="$CERTBOT_SSL_DIR"
     local email="${SSL_EMAIL:-hello@example.com}"
 
     # Parse domains from environment variable
@@ -105,10 +105,10 @@ create_temp_certs() {
 
 load_env
 
-# Check SSL_DIR
-# If SSL_DIR is unset, empty, or contains spaces, exit with error
-if [[ -z "$SSL_DIR" || "$SSL_DIR" =~ [[:space:]] ]]; then
-    echo "Error: SSL_DIR is not set, empty, or contains spaces. Please set SSL_DIR in .env correctly." >&2
+# Check CERTBOT_SSL_DIR
+# If CERTBOT_SSL_DIR is unset, empty, or contains spaces, exit with error
+if [[ -z "$CERTBOT_SSL_DIR" || "$CERTBOT_SSL_DIR" =~ [[:space:]] ]]; then
+    echo "Error: CERTBOT_SSL_DIR is not set, empty, or contains spaces. Please set CERTBOT_SSL_DIR in .env correctly." >&2
     exit 1
 fi
 
@@ -152,7 +152,7 @@ dirs=(
     "${STACKS_DIR}/${STACK_NAME}/templates"
     "${STACKS_DIR}/${STACK_NAME}/www/certbot"
     "${STACKS_DIR}/${STACK_NAME}/www/html"
-    "${STACKS_DIR}/${STACK_NAME}/${SSL_DIR}"
+    "${STACKS_DIR}/${STACK_NAME}/ssl"
 )
 create_directories "${dirs[@]}"
 

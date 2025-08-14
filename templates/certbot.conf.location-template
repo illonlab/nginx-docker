@@ -1,0 +1,11 @@
+# # CERTBOT
+# location ^~ /.well-known/acme-challenge/ {
+#     allow all;
+#     root /var/www/certbot;
+#     default_type "text/plain";
+#     try_files $uri =404;
+# }
+
+location /.well-known/acme-challenge/ {
+    root /var/www/certbot;
+}

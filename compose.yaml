@@ -1,0 +1,30 @@
+services:
+  nginx:
+    image: nginx:latest
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    volumes:
+      - ./nginx.conf:/etc/nginx.conf
+      - ./fastcgi_params:/etc/fastcgi_params:ro
+      - ./scgi_params:/etc/scgi_params:ro
+      - ./uwsgi_params:/etc/uwsgi_params:ro
+      - ./mime.types:/etc/mime.types:ro
+      - ./dhparam.pem:/etc/dhparam.pem:ro
+      - ./templates:/etc/templates:ro
+      - ./conf.d:/etc/conf.d
+      - ./stream-conf.d:/etc/stream-conf.d
+      - ./locations:/etc/locations
+      - ./certbot/ssl/:/etc/letsencrypt
+      - ./99-autoreload.sh:/docker-entrypoint.d/99-autoreload.sh
+      - ./20-envsubst-on-templates.sh:/docker-entrypoint.d/20-envsubst-on-templates.sh
+      - ./www/html:/var/www/html
+      - ./www/certbot:/var/www/certbot
+
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./www/certbot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+networks: {}

@@ -4,7 +4,7 @@ set -e
 # Use Let's Encrypt staging environment if set to 1
 STAGING=0
 
-CERTBOT_SSL_DIR="${CERTBOT_SSL_DIR:-/etc/letsencrypt/live/}"
+CERTBOT_SSL_DIR="${CERTBOT_SSL_DIR:-/etc/letsencrypt/live}"
 
 # --- Functions ---
 

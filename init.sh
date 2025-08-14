@@ -23,6 +23,10 @@ create_directories() {
 }
 
 # === Function to safely load .env files ===
+
+# Usage: load_env          # loads default .env
+#        load_env my.env   # loads a custom file
+
 load_env() {
     local env_file="${1:-.env}"  # default to .env if no argument is given
 
@@ -46,19 +50,15 @@ load_env() {
 
         # Trim spaces around key and value
         key="$(echo "$key" | xargs)"
-        value="$(echo "$value" | xargs | sed 's/"/\\"/g')"
+        value="$(echo "$value" | xargs)"
 
         # Check if the variable name is valid
         [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "Skipping invalid key: $key" >&2; continue; }
 
         # Export the variable
-        export "$key=\"$value\""
+        export "$key=$value"
     done < "$env_file"
 }
-
-# Usage: load_env          # loads default .env
-#        load_env my.env   # loads a custom file
-
 
 # === Generates a temporary self-signed certificate for a domain so services can start before the real cert is issued ===
 create_temp_certs() {

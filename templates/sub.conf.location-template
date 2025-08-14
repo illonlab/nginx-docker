@@ -1,4 +1,3 @@
-# SUB
 location /${SUB_URL} {
   if ($hack = 1) {return 404;}
   proxy_redirect off;

@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# --- Functions ---
+
 # === Generate dhparam.pem ===
 generate_dhparam() {
     local key_length="$1"
@@ -20,41 +22,45 @@ create_directories() {
     done
 }
 
-generate_dhparam 2048
+# === Function to safely load .env files ===
+load_env() {
+    local env_file="${1:-.env}"  # default to .env if no argument is given
 
-dirs=(
-    "${STACKS_DIR}/${STACK_NAME}/conf.d"
-    "${STACKS_DIR}/${STACK_NAME}/locations"
-    "${STACKS_DIR}/${STACK_NAME}/stream-conf.d"
-    "${STACKS_DIR}/${STACK_NAME}/templates"
-    "${STACKS_DIR}/${STACK_NAME}/www/certbot"
-    "${STACKS_DIR}/${STACK_NAME}/www/html"
-    "${STACKS_DIR}/${STACK_NAME}/ssl"
-)
-create_directories "${dirs[@]}"
+    # Check if the file exists
+    [ ! -f "$env_file" ] && return
 
-if [ -f .env ]; then
-  eval "$(grep -v '^#' .env | sed 's/^/export /')"
-fi
+    while IFS= read -r line || [ -n "$line" ]; do
+        # Skip empty lines and comments
+        [[ -z "$line" || "$line" == \#* ]] && continue
 
-if ! docker compose version &>/dev/null; then
-    echo 'Error: docker compose is not installed.' >&2
-    exit 1
-fi
+        # Multiline support: join lines ending with \
+        while [[ "$line" =~ \\$ ]]; do
+            line="${line%\\}"  # remove trailing backslash
+            IFS= read -r next || break
+            line="$line$next"
+        done
 
-IFS=' ' read -r -a domains <<< "${CERTBOT_DOMAINS:-example.com}"
-rsa_key_size=4096
-data_path="./certbot/ssl/"
-email="${SSL_EMAIL:-hello@example.com}"
-staging=0
+        # Split key and value
+        local key="${line%%=*}"
+        local value="${line#*=}"
 
-if [ "$(find "$data_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
-    read -p "SSL directory not empty. Overwrite? (y/N) " decision
-    if [ "$decision" != "y" ] && [ "$decision" != "Y" ]; then
-        exit
-    fi
-fi
+        # Trim spaces around key and value
+        key="$(echo "$key" | xargs)"
+        value="$(echo "$value" | xargs | sed 's/"/\\"/g')"
 
+        # Check if the variable name is valid
+        [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]] || { echo "Skipping invalid key: $key" >&2; continue; }
+
+        # Export the variable
+        export "$key=\"$value\""
+    done < "$env_file"
+}
+
+# Usage: load_env          # loads default .env
+#        load_env my.env   # loads a custom file
+
+
+# === Generates a temporary self-signed certificate for a domain so services can start before the real cert is issued ===
 create_temp_certs() {
     local domain=$1
     echo "### Creating dummy certificate for $domain ..."
@@ -70,6 +76,67 @@ create_temp_certs() {
     cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/chain.pem"
     cp "$data_path/live/$domain/fullchain.pem" "$data_path/live/$domain/cert.pem"
 }
+
+# --- Preparation ---
+
+load_env
+
+if ! docker compose version &>/dev/null; then
+    echo 'Error: docker compose is not installed.' >&2
+    exit 1
+fi
+
+# Define the directory where this script is located
+SCRIPT_DIR="$( cd -- "$(dirname "$0")" >/dev/null 2>&1 ; pwd -P )"
+
+# Validate directory depth (at least 3)
+depth=$(echo "$SCRIPT_DIR" | awk -F'/' '{print NF-1}')
+if (( depth < 3 )); then
+    echo "Error: SCRIPT_DIR must contain at least 3 directories. Current: $SCRIPT_DIR" >&2
+    exit 1
+fi
+
+# Compute defaults
+DEFAULT_STACK_NAME="$(basename "$SCRIPT_DIR")"
+DEFAULT_STACKS_DIR="$(dirname "$SCRIPT_DIR")"
+
+# Apply defaults if vars are unset, empty, or contain spaces 
+[[ -z "$STACKS_DIR" || "$STACKS_DIR" =~ [[:space:]] ]] && STACKS_DIR="$DEFAULT_STACKS_DIR"
+[[ -z "$STACK_NAME" || "$STACK_NAME" =~ [[:space:]] ]] && STACK_NAME="$DEFAULT_STACK_NAME"
+
+echo
+echo "SCRIPT_DIR       = $SCRIPT_DIR"
+echo "STACKS_DIR       = $STACKS_DIR"
+echo "STACK_NAME       = $STACK_NAME"
+echo "DEFAULT_STACKS_DIR = $DEFAULT_STACKS_DIR"
+echo "DEFAULT_STACK_NAME = $DEFAULT_STACK_NAME"
+echo
+
+generate_dhparam 2048
+
+dirs=(
+    "${STACKS_DIR}/${STACK_NAME}/conf.d"
+    "${STACKS_DIR}/${STACK_NAME}/locations"
+    "${STACKS_DIR}/${STACK_NAME}/stream-conf.d"
+    "${STACKS_DIR}/${STACK_NAME}/templates"
+    "${STACKS_DIR}/${STACK_NAME}/www/certbot"
+    "${STACKS_DIR}/${STACK_NAME}/www/html"
+    "${STACKS_DIR}/${STACK_NAME}/ssl"
+)
+create_directories "${dirs[@]}"
+
+IFS=' ' read -r -a domains <<< "${CERTBOT_DOMAINS:-example.com}"
+rsa_key_size=4096
+data_path="./certbot/ssl/"
+email="${SSL_EMAIL:-hello@example.com}"
+staging=0
+
+if [ "$(find "$data_path" -mindepth 1 -print -quit 2>/dev/null)" ]; then
+    read -p "SSL directory not empty. Overwrite? (y/N) " decision
+    if [ "$decision" != "y" ] && [ "$decision" != "Y" ]; then
+        exit
+    fi
+fi
 
 for domain in "${domains[@]}"; do
     create_temp_certs "$domain"

@@ -22,14 +22,16 @@ create_directories() {
 
 generate_dhparam 2048
 
-create_directories\
- "${STACKS_DIR}/${STACK_NAME}/conf.d"\
- "${STACKS_DIR}/${STACK_NAME}/locations"\
- "${STACKS_DIR}/${STACK_NAME}/stream-conf.d"\
- "${STACKS_DIR}/${STACK_NAME}/templates"\
- "${STACKS_DIR}/${STACK_NAME}/www/certbot"\
- "${STACKS_DIR}/${STACK_NAME}/www/html"\
- "${STACKS_DIR}/${STACK_NAME}/ssl"
+dirs=(
+    "${STACKS_DIR}/${STACK_NAME}/conf.d"
+    "${STACKS_DIR}/${STACK_NAME}/locations"
+    "${STACKS_DIR}/${STACK_NAME}/stream-conf.d"
+    "${STACKS_DIR}/${STACK_NAME}/templates"
+    "${STACKS_DIR}/${STACK_NAME}/www/certbot"
+    "${STACKS_DIR}/${STACK_NAME}/www/html"
+    "${STACKS_DIR}/${STACK_NAME}/ssl"
+)
+create_directories "${dirs[@]}"
 
 if [ -f .env ]; then
   eval "$(grep -v '^#' .env | sed 's/^/export /')"

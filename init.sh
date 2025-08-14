@@ -4,7 +4,7 @@ set -e
 # Use Let's Encrypt staging environment if set to 1
 STAGING=0
 
-CERTBOT_SSL_DIR="${CERTBOT_SSL_DIR:-/etc/letsencrypt/live}"
+SSL_DIR="${SSL_DIR:-ssl}"
 
 # --- Functions ---
 
@@ -69,8 +69,8 @@ load_env() {
 # Function to create temporary certificates
 create_temp_certs() {
     local rsa_key_size=4096
-    local certbot_ssl_path="$CERTBOT_SSL_DIR"
-    local host_ssl_path="$CERTBOT_SSL_DIR"
+    local certbot_ssl_path="/etc/letsencrypt/live"
+    local host_ssl_path="$SSL_DIR"
     local email="${SSL_EMAIL:-hello@example.com}"
 
     # Parse domains from environment variable
@@ -86,18 +86,18 @@ create_temp_certs() {
 
     for domain in "${domains[@]}"; do
         echo "### Creating dummy certificate for $domain ..."
-        mkdir -p "$host_ssl_path/live/$domain"
+        mkdir -p "$host_ssl_path/$domain"
 
         # Generate temporary certificate
         docker compose -f "compose.yaml" run --rm --entrypoint "\
           openssl req -x509 -nodes -newkey rsa:$rsa_key_size -days 1 \
-            -keyout '$certbot_ssl_path/live/$domain/privkey.pem' \
-            -out '$certbot_ssl_path/live/$domain/fullchain.pem' \
+            -keyout '$certbot_ssl_path/$domain/privkey.pem' \
+            -out '$certbot_ssl_path/$domain/fullchain.pem' \
             -subj '/CN=localhost'" certbot
 
         # Create compatible certificate files
-        cp "$host_ssl_path/live/$domain/fullchain.pem" "$host_ssl_path/live/$domain/chain.pem"
-        cp "$host_ssl_path/live/$domain/fullchain.pem" "$host_ssl_path/live/$domain/cert.pem"
+        cp "$host_ssl_path/$domain/fullchain.pem" "$host_ssl_path/$domain/chain.pem"
+        cp "$host_ssl_path/$domain/fullchain.pem" "$host_ssl_path/$domain/cert.pem"
     done
 }
 

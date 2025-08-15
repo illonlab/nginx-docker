@@ -15,7 +15,7 @@ services:
       - ./conf.d:/etc/nginx/conf.d
       - ./stream-conf.d:/etc/nginx/stream-conf.d
       - ./locations:/etc/nginx/locations
-      - ./ssl:/etc/nginx/letsencrypt
+      - ./ssl:/etc/letsencrypt
       - ./99-autoreload.sh:/docker-entrypoint.d/99-autoreload.sh:ro
       - ./20-envsubst-on-templates.sh:/docker-entrypoint.d/20-envsubst-on-templates.sh:ro
       - ./www/html:/var/www/html
@@ -24,7 +24,7 @@ services:
   certbot:
     image: certbot/certbot
     volumes:
-      - ./ssl:/etc/nginx/letsencrypt
+      - ./ssl:/etc/letsencrypt
       - ./www/certbot:/var/www/certbot
     entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
 networks: {}

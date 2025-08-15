@@ -151,6 +151,7 @@ create_temp_cert() {
 
 request_real_cert() {
     local domain="$1"
+    local email="$SSL_EMAIL"
     cert_path="$SSL_DIR/live/$domain"
 
     # Use dummy cert if no cert exists yet
@@ -176,11 +177,11 @@ request_real_cert() {
     docker compose  -f "compose.yaml" up --force-recreate -d nginx
     echo
 
-    echo "### Deleting dummy certificate for $domains ..."
+    echo "### Deleting dummy certificate for $domain ..."
     docker compose  -f "compose.yaml" run --rm --entrypoint "\
-      rm -Rf /etc/letsencrypt/live/$domains && \
-      rm -Rf /etc/letsencrypt/archive/$domains && \
-      rm -Rf /etc/letsencrypt/renewal/$domains.conf" certbot
+      rm -Rf /etc/letsencrypt/live/$domain && \
+      rm -Rf /etc/letsencrypt/archive/$domain && \
+      rm -Rf /etc/letsencrypt/renewal/$domain.conf" certbot
 
     docker compose -f "compose.yaml" run --rm --entrypoint "\
       certbot -v certonly --webroot -w /var/www/certbot \

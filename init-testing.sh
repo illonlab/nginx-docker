@@ -5,8 +5,8 @@ set -e
 # Configuration
 # -------------
 
-# Directory where certificates are stored
-SSL_DIR="${SSL_DIR:-ssl}"
+# SSL directory inside the docker containers
+SSL_DIR="${SSL_DIR:-/etc/letsencrypt}"
 
 # Use Let's Encrypt staging environment if set to 1
 STAGING=0
@@ -141,7 +141,9 @@ create_temp_cert() {
       --entrypoint "cp" \
       "$cert_dir/fullchain.pem" "$cert_dir/cert.pem"
 
+    echo
     echo "Dummy certificate created at $cert_dir"
+    echo
 }
 
 # === Request a real certificate using Certbot ===
@@ -153,6 +155,7 @@ request_real_cert() {
     local domain="$1"
     local email="$SSL_EMAIL"
     cert_path="$SSL_DIR/live/$domain"
+    mkdir -p "$cert_path"
 
     # Use dummy cert if no cert exists yet
     if ! is_dummy_cert "$cert_path"; then
@@ -170,18 +173,22 @@ request_real_cert() {
         *)  email_arg="--email $email" ;;
     esac
 
+    echo
     echo "Requesting real certificate for $domain..."
-    mkdir -p "$cert_path"
-
+    echo
     echo "### Starting nginx ..."
-    docker compose  -f "compose.yaml" up --force-recreate -d nginx
     echo
 
+    docker compose  -f "compose.yaml" up --force-recreate -d nginx
+
+    echo
     echo "### Deleting dummy certificate for $domain ..."
+    echo
+
     docker compose  -f "compose.yaml" run --rm --entrypoint "\
-      rm -Rf /etc/letsencrypt/live/$domain && \
-      rm -Rf /etc/letsencrypt/archive/$domain && \
-      rm -Rf /etc/letsencrypt/renewal/$domain.conf" certbot
+      rm -rf /etc/letsencrypt/live/$domain && \
+      rm -rf /etc/letsencrypt/archive/$domain && \
+      rm -rf /etc/letsencrypt/renewal/$domain.conf" certbot
 
     docker compose -f "compose.yaml" run --rm --entrypoint "\
       certbot -v certonly --webroot -w /var/www/certbot \
@@ -197,6 +204,8 @@ request_real_cert() {
     echo "Real certificate obtained for $domain"
     echo
     echo "### Reloading nginx ..."
+    echo
+
     docker compose -f "compose.yaml" exec nginx nginx -s reload
 }
 
@@ -273,7 +282,9 @@ for domain in "${CERTBOT_DOMAINS[@]}"; do
 
     # If certificate is missing or dummy, create temporary cert
     if is_dummy_cert "$cert_path"; then
+        echo
         echo "$domain: creating dummy certificate..."
+        echo
         create_temp_cert "$cert_path"
     fi
 

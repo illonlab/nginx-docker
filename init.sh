@@ -98,10 +98,10 @@ create_temp_certs() {
 
 load_env
 
-# Check CERTBOT_SSL_DIR
-# If CERTBOT_SSL_DIR is unset, empty, or contains spaces, exit with error
-if [[ -z "$CERTBOT_SSL_DIR" || "$CERTBOT_SSL_DIR" =~ [[:space:]] ]]; then
-    echo "Error: CERTBOT_SSL_DIR is not set, empty, or contains spaces. Please set CERTBOT_SSL_DIR in .env correctly." >&2
+# Check SSL_DIR
+# If SSL_DIR is unset, empty, or contains spaces, exit with error
+if [[ -z "$SSL_DIR" || "$SSL_DIR" =~ [[:space:]] ]]; then
+    echo "Error: SSL_DIR is not set, empty, or contains spaces. Please set SSL_DIR in .env correctly." >&2
     exit 1
 fi
 

@@ -117,29 +117,33 @@ is_dummy_cert() {
 # === Create a temporary dummy certificate ===
 
 # Arguments:
-#   $1 - path to certificate directory
+#   $1 - path to certificate directory inside certbot container
+#   $2 - domain name
 
 create_temp_cert() {
     local cert_dir="$1"
-    mkdir -p "$cert_dir"
+    local domain="$2"
+    mkdir -p "${STACKS_DIR}/${STACK_NAME}/ssl/live/$domain"
     
     # Generate dummy certificate
     docker compose -f "compose.yaml" run --rm --entrypoint "\
       openssl req -x509 -nodes -newkey rsa:$RSA_KEY_SIZE \
-          -days '$DUMMY_DAYS' \
-          -keyout '$cert_dir/privkey.pem' \
-          -out '$cert_dir/fullchain.pem' \
-          -subj '/CN=localhost'"
+          -days $DUMMY_DAYS \
+          -keyout '$cert_dir/$domain/privkey.pem' \
+          -out '$cert_dir/$domain/fullchain.pem' \
+          -subj '/CN=localhost'" certbot
 
     # Copy fullchain.pem to chain.pem
-    docker compose -f "compose.yaml" run --rm \
-      --entrypoint "cp" \
-      "$cert_dir/fullchain.pem" "$cert_dir/chain.pem"
+    docker compose -f compose.yaml run --rm \
+      --entrypoint cp \
+      certbot \
+      "$cert_dir/$domain/fullchain.pem" "$cert_dir/$domain/chain.pem"
     
     # Copy fullchain.pem to cert.pem
-    docker compose -f "compose.yaml" run --rm \
-      --entrypoint "cp" \
-      "$cert_dir/fullchain.pem" "$cert_dir/cert.pem"
+    docker compose -f compose.yaml run --rm \
+      --entrypoint cp \
+      certbot \
+      "$cert_dir/$domain/fullchain.pem" "$cert_dir/$domain/cert.pem"
 
     echo
     echo "Dummy certificate created at $cert_dir"
@@ -154,7 +158,7 @@ create_temp_cert() {
 request_real_cert() {
     local domain="$1"
     local email="$SSL_EMAIL"
-    cert_path="$SSL_DIR/live/$domain"
+    local cert_path="$SSL_DIR/live/$domain"
     mkdir -p "$cert_path"
 
     # Use dummy cert if no cert exists yet
@@ -278,14 +282,14 @@ generate_dhparam 2048
 # ----------
 
 for domain in "${CERTBOT_DOMAINS[@]}"; do
-    cert_path="$SSL_DIR/live/$domain"
+    cert_path="$SSL_DIR/live"
 
     # If certificate is missing or dummy, create temporary cert
     if is_dummy_cert "$cert_path"; then
         echo
         echo "$domain: creating dummy certificate..."
         echo
-        create_temp_cert "$cert_path"
+        create_temp_cert "$cert_path" "$domain"
     fi
 
     # Try to get real certificate

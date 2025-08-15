@@ -70,7 +70,7 @@ load_env() {
 create_temp_certs() {
     local rsa_key_size=4096
     local certbot_ssl_path="/etc/letsencrypt/live"
-    local host_ssl_path="$SSL_DIR"
+    local host_ssl_path="$SSL_DIR/live/$domain"
     local email="${SSL_EMAIL:-hello@example.com}"
 
     # Parse domains from environment variable

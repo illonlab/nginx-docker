@@ -185,6 +185,9 @@ request_real_cert() {
 
     docker compose  -f "compose.yaml" up --force-recreate -d nginx
 
+    # Temporary pause for debugging
+    read -p "Press Enter to continue..."
+
     echo
     echo "### Deleting dummy certificate for $domain ..."
     echo

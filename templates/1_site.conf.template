@@ -1,0 +1,40 @@
+server {
+  listen                               80;
+  server_name                          ${NGINX_SITE_1} *.${NGINX_SITE_1};
+
+  include /etc/nginx/locations/certbot.conf;
+
+  location / {
+    return 301                         https://$host$request_uri;
+  }
+}
+
+server {
+  listen                               ${NGINX_SITE_1_SERVER_HOST}:${NGINX_SITE_1_SERVER_PORT} ssl proxy_protocol;
+  http2                                on;
+  http3                                on;
+  server_name                          ${NGINX_SITE_1} *.${NGINX_SITE_1};
+
+  # SSL
+  ssl_certificate                      /etc/letsencrypt/live/${NGINX_SITE_1}/fullchain.pem;
+  ssl_certificate_key                  /etc/letsencrypt/live/${NGINX_SITE_1}/privkey.pem;
+  ssl_trusted_certificate              /etc/letsencrypt/live/${NGINX_SITE_1}/chain.pem;
+
+  # Diffie-Hellman parameter for DHE ciphersuites
+  ssl_dhparam                          /etc/nginx/dhparam.pem;
+
+  # Site
+  #index index.html index.htm index.php index.nginx-debian.html;
+  root /var/www/html/;
+
+  if ($host !~* ^(.+\.)?${NGINX_SITE_1}$ ){return 444;}
+  if ($scheme ~* https) {set $safe 1;}
+  if ($ssl_server_name !~* ^(.+\.)?${NGINX_SITE_1}$ ) {set $safe "${safe}0"; }
+  if ($safe = 10){return 444;}
+  if ($request_uri ~ "(\"|'|`|~|,|:|--|;|%|\$|&&|\?\?|0x00|0X00|\||\|\{|\}|\[|\]|<|>|\.\.\.|\.\.\/|\/\/\/)"){set $hack 1;}
+  error_page 400 402 403 500 501 502 503 504 =404 /404;
+  proxy_intercept_errors on;
+
+  # Enable locations
+  include /etc/nginx/locations/1_site/*.conf;
+}

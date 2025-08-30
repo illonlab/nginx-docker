@@ -1,0 +1,3 @@
+location /.well-known/acme-challenge/ {
+    proxy_pass http://${NGINX_NPM_HOST}:${NGINX_NPM_HTTP_PORT};
+}

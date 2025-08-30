@@ -1,0 +1,4 @@
+server {
+  listen                               ${NGINX_UPSTREAM_REJECT_HOST}:${NGINX_UPSTREAM_REJECT_PORT} ssl proxy_protocol;
+  ssl_reject_handshake                 on;
+}

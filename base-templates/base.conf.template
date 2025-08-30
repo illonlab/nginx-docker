@@ -1,0 +1,40 @@
+server {
+  listen                               80;
+  server_name                          ${SITE_DOMAIN} *.${SITE_DOMAIN};
+
+  # Certbot
+  include /etc/nginx/locations/certbot.conf;
+
+  location / {
+    return 301                         https://$host$request_uri;
+  }
+}
+
+server {
+  listen                               ${SITE_HOST}:${SITE_PORT} ssl proxy_protocol;
+  http2                                on;
+  http3                                on;
+  server_name                          ${SITE_DOMAIN} *.${SITE_DOMAIN};
+
+  # SSL
+  ssl_certificate                      /etc/letsencrypt/live/${SITE_DOMAIN}/fullchain.pem;
+  ssl_certificate_key                  /etc/letsencrypt/live/${SITE_DOMAIN}/privkey.pem;
+  ssl_trusted_certificate              /etc/letsencrypt/live/${SITE_DOMAIN}/chain.pem;
+
+  # Diffie-Hellman parameter for DHE ciphersuites
+  ssl_dhparam                          /etc/nginx/dhparam.pem;
+
+  # Site
+  root /var/www/html/;
+
+  if ($host !~* ^(.+\.)?${SITE_DOMAIN}$ ){return 444;}
+  if ($scheme ~* https) {set $safe 1;}
+  if ($ssl_server_name !~* ^(.+\.)?${SITE_DOMAIN}$ ) {set $safe "${safe}0"; }
+  if ($safe = 10){return 444;}
+  if ($request_uri ~ "(\"|'|`|~|,|:|--|;|%|\$|&&|\?\?|0x00|0X00|\||\|\{|\}|\[|\]|<|>|\.\.\.|\.\.\/|\/\/\/)"){set $hack 1;}
+  error_page 400 402 403 500 501 502 503 504 =404 /404;
+  proxy_intercept_errors on;
+
+  # Enable locations
+  include /etc/nginx/locations/${SITE_NAME}/*.conf;
+}

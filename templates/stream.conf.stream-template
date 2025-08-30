@@ -1,0 +1,34 @@
+map $ssl_preread_server_name $backend {
+  ""                                      reject;
+  ${NGINX_SITE_1}                          one;
+  ${NGINX_SITE_2}                          two;
+  ${NGINX_SITE_3}                        three;
+  default                                default;
+}
+
+upstream one {
+  server ${NGINX_UPSTREAM_1_HOST}:${NGINX_UPSTREAM_1_PORT};
+}
+
+upstream two {
+  server ${NGINX_UPSTREAM_2_HOST}:${NGINX_UPSTREAM_2_PORT};
+}
+
+upstream three {
+  server ${NGINX_UPSTREAM_3_HOST}:${NGINX_UPSTREAM_3_PORT};
+}
+
+upstream default {
+  server ${NGINX_UPSTREAM_DEFAULT_HOST}:${NGINX_UPSTREAM_DEFAULT_PORT};
+}
+
+upstream reject {
+ server ${NGINX_UPSTREAM_REJECT_HOST}:${NGINX_UPSTREAM_REJECT_PORT};
+}
+
+server {
+  listen 443                           reuseport;
+  ssl_preread                          on;
+  proxy_protocol                       on;
+  proxy_pass                           $backend;
+}

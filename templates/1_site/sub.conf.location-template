@@ -1,0 +1,9 @@
+location /${NGINX_SITE_1_SUB_URL} {
+  if ($hack = 1) {return 404;}
+  proxy_redirect off;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_pass http://${NGINX_SITE_1_SUB_HOST}:${NGINX_SITE_1_SUB_PORT}/${NGINX_SITE_1_SUB_URL};
+  break;
+}

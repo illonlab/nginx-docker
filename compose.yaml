@@ -1,0 +1,41 @@
+services:
+  nginx:
+    image: nginx:latest
+    restart: unless-stopped
+    network_mode: host
+    env_file: .env
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf # main config
+      - ./fastcgi_params:/etc/nginx/fastcgi_params:ro # fastcgi
+      - ./scgi_params:/etc/nginx/scgi_params:ro # scgi
+      - ./uwsgi_params:/etc/nginx/uwsgi_params:ro # uwsgi
+      - ./mime.types:/etc/nginx/mime.types:ro # mime types
+      - ./dhparam.pem:/etc/nginx/dhparam.pem:ro # dh param
+      - ./templates:/etc/nginx/templates:ro # templates (envsubst)
+      - ./conf.d:/etc/nginx/conf.d # site configs
+      - ./stream-conf.d:/etc/nginx/stream-conf.d # stream configs
+      - ./locations:/etc/nginx/locations # site configs
+      - ./ssl:/etc/letsencrypt # ssl certs
+      - ./99-autoreload.sh:/docker-entrypoint.d/99-autoreload.sh:ro # reload
+      - ./20-envsubst-on-templates.sh:/docker-entrypoint.d/20-envsubst-on-templates.sh:ro # envsubst csript
+      - ./www/html:/var/www/html # web root
+      - ./www/certbot:/var/www/certbot # certbot challenge files
+      - .env:/etc/nginx/.env:ro
+
+  certbot:
+    image: certbot/certbot
+    restart: unless-stopped
+    volumes:
+      - ./ssl:/etc/letsencrypt
+      - ./www/certbot:/var/www/certbot
+    env_file: .env
+    entrypoint: >
+      /bin/sh -c '
+      trap exit TERM;
+      while :; do
+        certbot renew \
+          --pre-hook "touch $CERTBOT_LOCK_FILE" \
+          --post-hook "rm -f $CERTBOT_LOCK_FILE";
+        sleep $CERTBOT_RENEW_INTERVAL & wait $${!};
+      done;'
+networks: {}

@@ -1,0 +1,12 @@
+location /${NGINX_SITE_1_PANEL_URL} {
+  if ($hack = 1) {return 404;}
+  proxy_redirect off;
+  proxy_set_header Host $host;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  proxy_set_header X-Real-IP $remote_addr;
+  proxy_set_header Range $http_range;
+  proxy_set_header If-Range $http_if_range;
+  proxy_pass http://${NGINX_SITE_1_PANEL_HOST}:${NGINX_SITE_1_PANEL_PORT}/${NGINX_SITE_1_PANEL_URL};
+  break;
+}
